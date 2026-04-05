@@ -1,0 +1,128 @@
+{
+  "_doc": "Standard Odin task templates for throne_messages dispatch. Merlin uses these for zero-ambiguity delegation.",
+  "templates": {
+    "daemon_restart": {
+      "tag": "TASK_OPS",
+      "priority": "high",
+      "subject": "Restart daemon: {daemon_name}",
+      "payload": {
+        "action": "daemon_restart",
+        "daemon": "{daemon_name}",
+        "verify_command": "launchctl list | grep {daemon_label}",
+        "on_failure": "escalate to #cathedral-alerts"
+      }
+    },
+    "health_check": {
+      "tag": "TASK_OPS",
+      "priority": "normal",
+      "subject": "Health check: {target}",
+      "payload": {
+        "action": "health_check",
+        "target": "{target}",
+        "checks": ["process_running", "log_recent", "no_errors"],
+        "report_to": "#cathedral-agents"
+      }
+    },
+    "git_commit": {
+      "tag": "TASK_CODE",
+      "priority": "normal",
+      "subject": "Commit and push: {description}",
+      "payload": {
+        "action": "git_commit",
+        "repo_path": "{repo_path}",
+        "message": "{commit_message}",
+        "push": true,
+        "branch": "{branch}"
+      }
+    },
+    "file_operation": {
+      "tag": "TASK_CODE",
+      "priority": "normal",
+      "subject": "File op: {description}",
+      "payload": {
+        "action": "file_operation",
+        "operation": "{op_type}",
+        "source": "{source_path}",
+        "destination": "{dest_path}",
+        "verify": true
+      }
+    },
+    "slack_post": {
+      "tag": "TASK_COMMS",
+      "priority": "normal",
+      "subject": "Post to Slack: {channel}",
+      "payload": {
+        "action": "slack_post",
+        "channel": "{channel_id}",
+        "message": "{message}",
+        "thread_ts": null
+      }
+    },
+    "api_call": {
+      "tag": "TASK_OPS",
+      "priority": "normal",
+      "subject": "API call: {endpoint}",
+      "payload": {
+        "action": "api_call",
+        "method": "{method}",
+        "url": "{url}",
+        "headers": {},
+        "body": null,
+        "expected_status": 200
+      }
+    },
+    "deploy": {
+      "tag": "TASK_CODE",
+      "priority": "high",
+      "subject": "Deploy: {project}",
+      "payload": {
+        "action": "deploy",
+        "project": "{project}",
+        "pre_check": "npx tsc --noEmit && npm run build",
+        "deploy_command": "{deploy_cmd}",
+        "verify_url": "{verify_url}",
+        "rollback_command": "{rollback_cmd}"
+      }
+    },
+    "research": {
+      "tag": "TASK_RESEARCH",
+      "priority": "normal",
+      "subject": "Research: {topic}",
+      "payload": {
+        "action": "research",
+        "topic": "{topic}",
+        "sources": ["web", "docs", "codebase"],
+        "depth": "standard",
+        "output_format": "summary",
+        "report_to": "{report_channel}"
+      }
+    },
+    "agm_data_pull": {
+      "tag": "TASK_AGM",
+      "priority": "normal",
+      "subject": "AGM data: {description}",
+      "payload": {
+        "action": "supabase_query",
+        "project": "bozfzxhntoiokfqzqbsx",
+        "query": "{sql_query}",
+        "format": "summary",
+        "report_to": "{report_channel}"
+      }
+    },
+    "build_verify": {
+      "tag": "TASK_CODE",
+      "priority": "high",
+      "subject": "Verify build: {project}",
+      "payload": {
+        "action": "build_verify",
+        "project_path": "{project_path}",
+        "commands": [
+          "npx tsc --noEmit",
+          "npm run build"
+        ],
+        "report_to": "#cathedral-agents",
+        "on_failure": "escalate to #cathedral-alerts"
+      }
+    }
+  }
+}
