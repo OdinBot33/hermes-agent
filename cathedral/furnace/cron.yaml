@@ -1,0 +1,182 @@
+enabled: true
+timezone: UTC
+
+# AUDITED 2026-04-04 — Removed dead/broken/wasteful jobs.
+# All jobs use local Ollama. GLM-5-turbo fallback via config.yaml.
+
+jobs:
+# ── Lightweight / No LLM needed ──────────────────────────
+
+- id: episodic-decay
+  schedule: 0 */6 * * *
+  skill: episodic-decay
+  model: qwen3:8b
+  provider: custom
+  timeout: 60
+
+- id: self-heal-sweep
+  schedule: 0 */4 * * *
+  skill: self-heal
+  model: qwen3:8b
+  provider: custom
+  context:
+    mode: auto
+  timeout: 300
+
+- id: cathedral-cron-tick
+  schedule: '*/5 * * * *'
+  skill: cathedral-cron-tick
+  model: qwen3:8b
+  provider: custom
+  timeout: 120
+
+# ── Classification (uses FREE local Ollama) ──────────────
+
+- id: auto-classify-queue
+  schedule: "*/15 * * * *"
+  skill: auto-classify
+  model: qwen3:8b
+  provider: custom
+  context:
+    mode: process-queue
+    paperclip_url: http://localhost:3100
+  timeout: 120
+
+# ── Daily jobs ───────────────────────────────────────────
+
+- id: kingdom-forge-nigredo
+  schedule: 0 0 * * *
+  skill: kingdom-nigredo
+  model: qwen3:8b
+  provider: custom
+  timeout: 1800
+
+- id: kingdom-forge-albedo
+  schedule: 0 2 * * *
+  skill: kingdom-albedo
+  model: qwen3:8b
+  provider: custom
+  timeout: 3600
+
+- id: kingdom-forge-citrinitas
+  schedule: 0 4 * * *
+  skill: kingdom-citrinitas
+  model: qwen3:8b
+  provider: custom
+  timeout: 3600
+
+- id: kingdom-forge-rubedo
+  schedule: 0 6 * * *
+  skill: kingdom-rubedo
+  model: qwen3:8b
+  provider: custom
+  timeout: 600
+  deliver_to:
+  - platform: slack
+    channel: '#cathedral-chat'
+  - platform: telegram
+    recipient: mahuki
+
+- id: hermes-self-reflect
+  schedule: 30 2 * * *
+  skill: hermes-self-reflect
+  model: qwen3:8b
+  provider: custom
+  timeout: 120
+  mcp_tool: hermes-ops:hermes_self_reflect
+
+- id: nightly-forge
+  schedule: 0 5 * * *
+  skill: nightly-forge
+  model: qwen3:8b
+  provider: custom
+  timeout: 25200
+  deliver_to:
+  - platform: slack
+    channel: '#cathedral-ops'
+
+- id: daily-dispatch-rebalance
+  schedule: "0 20 * * *"
+  skill: dispatch-work
+  model: qwen3:8b
+  provider: custom
+  context:
+    mode: rebalance
+    check_claude_min_dispatches: 3
+    ollama_fallback: true
+  timeout: 300
+  deliver_to:
+  - platform: slack
+    channel: '#cathedral-ops'
+
+- id: overnight-batch-kickoff
+  schedule: 0 1 * * *
+  skill: overnight-batch
+  model: qwen3:8b
+  provider: custom
+  context:
+    mode: full
+  timeout: 3600
+
+# ── Periodic (reduced frequency) ─────────────────────────
+
+- id: autonomous-orchestrator
+  schedule: 0 0 * * *
+  skill: autonomous-orchestrator
+  model: qwen3:8b
+  provider: custom
+  context:
+    mode: full
+  timeout: 5400
+
+- id: autonomous-orchestrator-reconcile
+  schedule: 0 */8 * * *
+  skill: autonomous-orchestrator
+  model: qwen3:8b
+  provider: custom
+  context:
+    mode: track-only
+  timeout: 300
+
+- id: kingdom-ouroboros-pulse
+  schedule: 0 */12 * * *
+  skill: kingdom-ouroboros-scan
+  model: qwen3:8b
+  provider: custom
+  timeout: 900
+
+- id: paperclip-bootstrap
+  schedule: "0 */6 * * *"
+  skill: paperclip-bootstrap
+  model: qwen3:8b
+  provider: custom
+  timeout: 1800
+  context:
+    mbm: /Users/odinbot33/.hermes/workspace/MBM-CATHEDRAL-REBUILD-001.md
+    paperclip_url: http://localhost:3100
+
+# ── Weekly/Monthly ───────────────────────────────────────
+
+- id: gepa-weekly
+  schedule: 0 8 * * 6
+  skill: gepa-optimize
+  model: qwen3:8b
+  provider: custom
+  context:
+    mode: full
+  timeout: 3600
+
+- id: adas-monthly
+  schedule: 0 7 1-7 * 0
+  skill: adas-optimize
+  model: qwen3:8b
+  provider: custom
+  context:
+    mode: full
+  timeout: 7200
+
+# ── REMOVED (2026-04-04 audit) ───────────────────────────
+# vigil-watch: broken status query, 288 calls/day for nothing
+# kingdom-metabolism-tick: skill file missing — dead code
+# openclaw-supervisor-light: mostly dead weight, 48 calls/day
+# openclaw-supervisor-full (x3): redundant with self-heal

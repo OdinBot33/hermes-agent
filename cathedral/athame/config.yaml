@@ -1,0 +1,290 @@
+model:
+  default: gpt-5.4
+  provider: openai-codex
+  base_url: https://chatgpt.com/backend-api/codex
+  api_key: ''
+fallback_providers: []
+credential_pool_strategies: {}
+toolsets:
+- hermes-cli
+- terminal
+- file
+agent:
+  max_turns: 80
+  tool_use_enforcement: auto
+  reasoning_effort: high
+terminal:
+  backend: local
+  modal_mode: auto
+  cwd: .
+  timeout: 300
+  env_passthrough: []
+  docker_image: nikolaik/python-nodejs:python3.11-nodejs20
+  docker_forward_env: []
+  docker_env: {}
+  singularity_image: docker://nikolaik/python-nodejs:python3.11-nodejs20
+  modal_image: nikolaik/python-nodejs:python3.11-nodejs20
+  daytona_image: nikolaik/python-nodejs:python3.11-nodejs20
+  container_cpu: 1
+  container_memory: 5120
+  container_disk: 51200
+  container_persistent: true
+  docker_volumes: []
+  docker_mount_cwd_to_workspace: false
+  persistent_shell: true
+browser:
+  inactivity_timeout: 120
+  command_timeout: 30
+  record_sessions: false
+  allow_private_urls: false
+  camofox:
+    managed_persistence: false
+  cloud_provider: local
+checkpoints:
+  enabled: true
+  max_snapshots: 30
+file_read_max_chars: 100000
+compression:
+  enabled: true
+  threshold: 0.5
+  target_ratio: 0.2
+  protect_last_n: 20
+  summary_model: gemma4:e4b
+  summary_provider: openai
+  summary_base_url: http://localhost:11434/v1
+smart_model_routing:
+  enabled: true
+  max_simple_chars: 200
+  max_simple_words: 35
+  cheap_model:
+    provider: openai
+    model: gemma4:e4b
+    base_url: http://localhost:11434/v1
+    api_key: ollama
+auxiliary:
+  vision:
+    provider: openai
+    model: gemma4:26b
+    base_url: http://localhost:11434/v1
+    api_key: ollama
+    timeout: 60
+    download_timeout: 30
+  web_extract:
+    provider: openai
+    model: qwen3.5:35b-a3b
+    base_url: http://localhost:11434/v1
+    api_key: ollama
+    timeout: 60
+  compression:
+    provider: openai
+    model: gemma4:e4b
+    base_url: http://localhost:11434/v1
+    api_key: ollama
+    timeout: 120
+  session_search:
+    provider: openai
+    model: gemma4:e4b
+    base_url: http://localhost:11434/v1
+    api_key: ollama
+    timeout: 30
+  skills_hub:
+    provider: openai
+    model: qwen3.5:35b-a3b
+    base_url: http://localhost:11434/v1
+    api_key: ollama
+    timeout: 90
+  approval:
+    provider: openai
+    model: qwen3.5:35b-a3b
+    base_url: http://localhost:11434/v1
+    api_key: ollama
+    timeout: 30
+  mcp:
+    provider: openai
+    model: qwen3.5:35b-a3b
+    base_url: http://localhost:11434/v1
+    api_key: ollama
+    timeout: 30
+  flush_memories:
+    provider: openai
+    model: qwen3.5:35b-a3b
+    base_url: http://localhost:11434/v1
+    api_key: ollama
+    timeout: 60
+display:
+  compact: true
+  personality: concise
+  resume_display: compact
+  busy_input_mode: interrupt
+  bell_on_complete: false
+  show_reasoning: false
+  streaming: true
+  inline_diffs: true
+  show_cost: false
+  skin: default
+  tool_progress_command: false
+  tool_preview_length: 0
+privacy:
+  redact_pii: false
+tts:
+  provider: elevenlabs
+  edge:
+    voice: en-US-AriaNeural
+  elevenlabs:
+    voice_id: HAvvFKatz0uu0Fv55Riy
+    model_id: eleven_multilingual_v2
+  openai:
+    model: gpt-4o-mini-tts
+    voice: alloy
+  neutts:
+    ref_audio: ''
+    ref_text: ''
+    model: neuphonic/neutts-air-q4-gguf
+    device: cpu
+stt:
+  enabled: true
+  provider: local
+  local:
+    model: base
+  openai:
+    model: whisper-1
+voice:
+  record_key: ctrl+b
+  max_recording_seconds: 120
+  auto_tts: false
+  silence_threshold: 200
+  silence_duration: 3.0
+human_delay:
+  mode: 'off'
+  min_ms: 800
+  max_ms: 2500
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  memory_char_limit: 1200
+  user_char_limit: 800
+  provider: ''
+  nudge_interval: 20
+  flush_min_turns: 8
+delegation:
+  model: gemma4:26b
+  provider: openai
+  base_url: http://localhost:11434/v1
+  api_key: ollama
+  max_iterations: 50
+  default_toolsets:
+  - terminal
+  - file
+prefill_messages_file: ''
+skills:
+  external_dirs: []
+honcho: {}
+timezone: ''
+discord:
+  require_mention: true
+  free_response_channels: ''
+  auto_thread: true
+  reactions: true
+whatsapp: {}
+approvals:
+  mode: manual
+  timeout: 60
+command_allowlist:
+- script execution via -e/-c flag
+- recursive delete
+quick_commands: {}
+personalities: {}
+security:
+  redact_secrets: true
+  tirith_enabled: true
+  tirith_path: tirith
+  tirith_timeout: 5
+  tirith_fail_open: true
+  website_blocklist:
+    enabled: false
+    domains: []
+    shared_files: []
+cron:
+  wrap_response: true
+_config_version: 11
+mcp:
+  servers:
+    filesystem:
+      command: npx
+      args:
+      - -y
+      - '@modelcontextprotocol/server-filesystem'
+      - /Users/odinbot33/Documents
+      - /Users/odinbot33/Projects
+    git:
+      command: npx
+      args:
+      - -y
+      - '@modelcontextprotocol/server-git'
+    github:
+      command: npx
+      args:
+      - -y
+      - '@modelcontextprotocol/server-github'
+      env:
+        GITHUB_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN:-}
+    webhook:
+      command: npx
+      args:
+      - -y
+      - '@modelcontextprotocol/server-filesystem'
+      - /Users/odinbot33/.hermes/webhooks
+session_reset:
+  mode: both
+  idle_minutes: 1440
+  at_hour: 4
+platform_toolsets:
+  cli:
+  - browser
+  - clarify
+  - code_execution
+  - delegation
+  - file
+  - memory
+  - skills
+  - terminal
+  - todo
+  - web
+  telegram:
+  - hermes-telegram
+  discord:
+  - browser
+  - clarify
+  - code_execution
+  - delegation
+  - file
+  - memory
+  - skills
+  - terminal
+  - todo
+  - web
+custom_providers:
+- name: llama-cpp
+  base_url: http://localhost:8080/v1
+  api_key: ''
+  api_mode: chat_completions
+  model: Jackrong/MLX-Qwopus3.5-27B-v3-4bit
+- name: ollama-athame
+  base_url: http://localhost:11434/v1
+  api_key: ''
+  api_mode: chat_completions
+web:
+  backend: firecrawl
+TELEGRAM_HOME_CHANNEL: '1577904055'
+persona:
+  name: gandalf
+  role: workhorse
+  node: athame
+  reports_to: merlin
+platforms:
+  webhook:
+    enabled: true
+    extra:
+      host: 0.0.0.0
+      port: 8644
+      secret: test-webhook-secret-v5-2024-12345
