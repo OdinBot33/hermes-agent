@@ -152,6 +152,73 @@ class TestAppMentionHandler:
 # TestSendDocument
 # ---------------------------------------------------------------------------
 
+def test_connect_updates_runtime_status_to_connected(tmp_path, monkeypatch):
+    """Successful connect should clear stale fatal Slack status and mark connected."""
+    from gateway import status
+
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+
+    status.write_runtime_status(
+        platform="slack",
+        platform_state="fatal",
+        error_code="slack_token_lock",
+        error_message="stale lock",
+    )
+
+    config = PlatformConfig(enabled=True, token="xoxb-fake")
+    adapter = SlackAdapter(config)
+
+    mock_app = MagicMock()
+    mock_app.event = lambda *_args, **_kwargs: (lambda fn: fn)
+    mock_app.command = lambda *_args, **_kwargs: (lambda fn: fn)
+    mock_app.client = AsyncMock()
+
+    mock_web_client = AsyncMock()
+    mock_web_client.auth_test = AsyncMock(return_value={
+        "user_id": "U_BOT",
+        "user": "testbot",
+        "team_id": "T_FAKE",
+        "team": "FakeTeam",
+    })
+
+    with (
+        patch.object(_slack_mod, "AsyncApp", return_value=mock_app),
+        patch.object(_slack_mod, "AsyncWebClient", return_value=mock_web_client),
+        patch.object(_slack_mod, "AsyncSocketModeHandler", return_value=MagicMock()),
+        patch.dict(os.environ, {"SLACK_APP_TOKEN": "xapp-fake"}, clear=False),
+        patch("gateway.status.acquire_scoped_lock", return_value=(True, None)),
+        patch("asyncio.create_task"),
+    ):
+        assert asyncio.run(adapter.connect()) is True
+
+    payload = status.read_runtime_status()
+    assert payload["platforms"]["slack"]["state"] == "connected"
+    assert "error_code" not in payload["platforms"]["slack"]
+    assert "error_message" not in payload["platforms"]["slack"]
+
+
+def test_disconnect_updates_runtime_status_to_disconnected(tmp_path, monkeypatch):
+    """Disconnect should record Slack as disconnected in runtime status."""
+    from gateway import status
+
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+
+    status.write_runtime_status(platform="slack", platform_state="connected")
+
+    config = PlatformConfig(enabled=True, token="xoxb-fake")
+    adapter = SlackAdapter(config)
+    adapter._running = True
+    adapter._handler = MagicMock()
+    adapter._handler.close_async = AsyncMock()
+    adapter._token_lock_identity = "xapp-fake"
+
+    with patch("gateway.status.release_scoped_lock"):
+        asyncio.run(adapter.disconnect())
+
+    payload = status.read_runtime_status()
+    assert payload["platforms"]["slack"]["state"] == "disconnected"
+
+
 class TestSendDocument:
     @pytest.mark.asyncio
     async def test_send_document_success(self, adapter, tmp_path):
