@@ -71,6 +71,7 @@ DEFAULT_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex"
 DEFAULT_QWEN_BASE_URL = "https://portal.qwen.ai/v1"
 DEFAULT_GITHUB_MODELS_BASE_URL = "https://api.githubcopilot.com"
 DEFAULT_COPILOT_ACP_BASE_URL = "acp://copilot"
+DEFAULT_CLAUDE_CODE_CLI_BASE_URL = "claude-cli://local"
 DEFAULT_OLLAMA_CLOUD_BASE_URL = "https://ollama.com/v1"
 CODEX_OAUTH_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 CODEX_OAUTH_TOKEN_URL = "https://auth.openai.com/oauth/token"
@@ -93,7 +94,7 @@ class ProviderConfig:
     """Describes a known inference provider."""
     id: str
     name: str
-    auth_type: str  # "oauth_device_code", "oauth_external", or "api_key"
+    auth_type: str  # "oauth_device_code", "oauth_external", "external_process", or "api_key"
     portal_base_url: str = ""
     inference_base_url: str = ""
     client_id: str = ""
@@ -132,6 +133,12 @@ PROVIDER_REGISTRY: Dict[str, ProviderConfig] = {
         name="Google Gemini (OAuth)",
         auth_type="oauth_external",
         inference_base_url=DEFAULT_GEMINI_CLOUDCODE_BASE_URL,
+    ),
+    "claude-code-cli": ProviderConfig(
+        id="claude-code-cli",
+        name="Claude Code CLI",
+        auth_type="external_process",
+        inference_base_url=DEFAULT_CLAUDE_CODE_CLI_BASE_URL,
     ),
     "copilot": ProviderConfig(
         id="copilot",
@@ -697,19 +704,20 @@ def _load_auth_store(auth_file: Optional[Path] = None) -> Dict[str, Any]:
 
 def _save_auth_store(auth_store: Dict[str, Any]) -> Path:
     auth_file = _auth_file_path()
-    auth_file.parent.mkdir(parents=True, exist_ok=True)
+    storage_path = auth_file.resolve(strict=False) if auth_file.is_symlink() else auth_file
+    storage_path.parent.mkdir(parents=True, exist_ok=True)
     auth_store["version"] = AUTH_STORE_VERSION
     auth_store["updated_at"] = datetime.now(timezone.utc).isoformat()
     payload = json.dumps(auth_store, indent=2) + "\n"
-    tmp_path = auth_file.with_name(f"{auth_file.name}.tmp.{os.getpid()}.{uuid.uuid4().hex}")
+    tmp_path = storage_path.with_name(f"{storage_path.name}.tmp.{os.getpid()}.{uuid.uuid4().hex}")
     try:
         with tmp_path.open("w", encoding="utf-8") as handle:
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(tmp_path, auth_file)
+        os.replace(tmp_path, storage_path)
         try:
-            dir_fd = os.open(str(auth_file.parent), os.O_RDONLY)
+            dir_fd = os.open(str(storage_path.parent), os.O_RDONLY)
         except OSError:
             dir_fd = None
         if dir_fd is not None:
@@ -725,7 +733,7 @@ def _save_auth_store(auth_store: Dict[str, Any]) -> Path:
             pass
     # Restrict file permissions to owner only
     try:
-        auth_file.chmod(stat.S_IRUSR | stat.S_IWUSR)
+        storage_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
     except OSError:
         pass
     return auth_file
@@ -992,6 +1000,7 @@ def resolve_provider(
         "aigateway": "ai-gateway", "vercel": "ai-gateway", "vercel-ai-gateway": "ai-gateway",
         "opencode": "opencode-zen", "zen": "opencode-zen",
         "qwen-portal": "qwen-oauth", "qwen-cli": "qwen-oauth", "qwen-oauth": "qwen-oauth", "google-gemini-cli": "google-gemini-cli", "gemini-cli": "google-gemini-cli", "gemini-oauth": "google-gemini-cli",
+        "claude-cli": "claude-code-cli", "claude-code-cli": "claude-code-cli", "claude-max-cli": "claude-code-cli",
         "hf": "huggingface", "hugging-face": "huggingface", "huggingface-hub": "huggingface",
         "mimo": "xiaomi", "xiaomi-mimo": "xiaomi",
         "aws": "bedrock", "aws-bedrock": "bedrock", "amazon-bedrock": "bedrock", "amazon": "bedrock",
@@ -2558,27 +2567,38 @@ def get_external_process_provider_status(provider_id: str) -> Dict[str, Any]:
     if not pconfig or pconfig.auth_type != "external_process":
         return {"configured": False}
 
-    command = (
-        os.getenv("HERMES_COPILOT_ACP_COMMAND", "").strip()
-        or os.getenv("COPILOT_CLI_PATH", "").strip()
-        or "copilot"
-    )
-    raw_args = os.getenv("HERMES_COPILOT_ACP_ARGS", "").strip()
-    args = shlex.split(raw_args) if raw_args else ["--acp", "--stdio"]
+    if provider_id == "claude-code-cli":
+        command = (
+            os.getenv("HERMES_CLAUDE_CODE_COMMAND", "").strip()
+            or os.getenv("CLAUDE_CLI_PATH", "").strip()
+            or "claude"
+        )
+        raw_args = os.getenv("HERMES_CLAUDE_CODE_ARGS", "").strip()
+        args = shlex.split(raw_args) if raw_args else []
+        ready_prefix = "claude-cli://"
+    else:
+        command = (
+            os.getenv("HERMES_COPILOT_ACP_COMMAND", "").strip()
+            or os.getenv("COPILOT_CLI_PATH", "").strip()
+            or "copilot"
+        )
+        raw_args = os.getenv("HERMES_COPILOT_ACP_ARGS", "").strip()
+        args = shlex.split(raw_args) if raw_args else ["--acp", "--stdio"]
+        ready_prefix = "acp+tcp://"
     base_url = os.getenv(pconfig.base_url_env_var, "").strip() if pconfig.base_url_env_var else ""
     if not base_url:
         base_url = pconfig.inference_base_url
 
     resolved_command = shutil.which(command) if command else None
     return {
-        "configured": bool(resolved_command or base_url.startswith("acp+tcp://")),
+        "configured": bool(resolved_command or base_url.startswith(ready_prefix)),
         "provider": provider_id,
         "name": pconfig.name,
         "command": command,
         "args": args,
         "resolved_command": resolved_command,
         "base_url": base_url,
-        "logged_in": bool(resolved_command or base_url.startswith("acp+tcp://")),
+        "logged_in": bool(resolved_command or base_url.startswith(ready_prefix)),
     }
 
 
@@ -2593,7 +2613,7 @@ def get_auth_status(provider_id: Optional[str] = None) -> Dict[str, Any]:
         return get_qwen_auth_status()
     if target == "google-gemini-cli":
         return get_gemini_oauth_auth_status()
-    if target == "copilot-acp":
+    if target in {"copilot-acp", "claude-code-cli"}:
         return get_external_process_provider_status(target)
     # API-key providers
     pconfig = PROVIDER_REGISTRY.get(target)
@@ -2661,25 +2681,45 @@ def resolve_external_process_provider_credentials(provider_id: str) -> Dict[str,
     if not base_url:
         base_url = pconfig.inference_base_url
 
-    command = (
-        os.getenv("HERMES_COPILOT_ACP_COMMAND", "").strip()
-        or os.getenv("COPILOT_CLI_PATH", "").strip()
-        or "copilot"
-    )
-    raw_args = os.getenv("HERMES_COPILOT_ACP_ARGS", "").strip()
-    args = shlex.split(raw_args) if raw_args else ["--acp", "--stdio"]
-    resolved_command = shutil.which(command) if command else None
-    if not resolved_command and not base_url.startswith("acp+tcp://"):
-        raise AuthError(
+    if provider_id == "claude-code-cli":
+        command = (
+            os.getenv("HERMES_CLAUDE_CODE_COMMAND", "").strip()
+            or os.getenv("CLAUDE_CLI_PATH", "").strip()
+            or "claude"
+        )
+        raw_args = os.getenv("HERMES_CLAUDE_CODE_ARGS", "").strip()
+        args = shlex.split(raw_args) if raw_args else []
+        ready_prefix = "claude-cli://"
+        missing_message = (
+            f"Could not find the Claude Code CLI command '{command}'. "
+            "Install Claude Code or set HERMES_CLAUDE_CODE_COMMAND/CLAUDE_CLI_PATH."
+        )
+        missing_code = "missing_claude_cli"
+    else:
+        command = (
+            os.getenv("HERMES_COPILOT_ACP_COMMAND", "").strip()
+            or os.getenv("COPILOT_CLI_PATH", "").strip()
+            or "copilot"
+        )
+        raw_args = os.getenv("HERMES_COPILOT_ACP_ARGS", "").strip()
+        args = shlex.split(raw_args) if raw_args else ["--acp", "--stdio"]
+        ready_prefix = "acp+tcp://"
+        missing_message = (
             f"Could not find the Copilot CLI command '{command}'. "
-            "Install GitHub Copilot CLI or set HERMES_COPILOT_ACP_COMMAND/COPILOT_CLI_PATH.",
+            "Install GitHub Copilot CLI or set HERMES_COPILOT_ACP_COMMAND/COPILOT_CLI_PATH."
+        )
+        missing_code = "missing_copilot_cli"
+    resolved_command = shutil.which(command) if command else None
+    if not resolved_command and not base_url.startswith(ready_prefix):
+        raise AuthError(
+            missing_message,
             provider=provider_id,
-            code="missing_copilot_cli",
+            code=missing_code,
         )
 
     return {
         "provider": provider_id,
-        "api_key": "copilot-acp",
+        "api_key": "***",
         "base_url": base_url.rstrip("/"),
         "command": resolved_command or command,
         "args": args,

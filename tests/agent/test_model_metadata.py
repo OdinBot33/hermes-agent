@@ -222,6 +222,15 @@ class TestGetModelContextLength:
         mock_fetch.return_value = {}
         assert get_model_context_length("unknown/never-heard-of-this") == CONTEXT_PROBE_TIERS[0]
 
+    @patch("agent.model_metadata.get_cached_context_length", return_value=None)
+    @patch("agent.model_metadata.fetch_model_metadata", return_value={})
+    def test_claude_cli_bridge_base_url_uses_claude_metadata(self, _mock_fetch, _mock_cache):
+        assert get_model_context_length(
+            "claude-opus-4-7",
+            base_url="claude-cli://local",
+            provider="claude-code-cli",
+        ) == 1000000
+
     @patch("agent.model_metadata.fetch_model_metadata")
     def test_partial_match_in_defaults(self, mock_fetch):
         mock_fetch.return_value = {}

@@ -268,6 +268,8 @@ def _infer_provider_from_url(base_url: str) -> Optional[str]:
     normalized = _normalize_base_url(base_url)
     if not normalized:
         return None
+    if normalized.lower().startswith("claude-cli://"):
+        return "anthropic"
     parsed = urlparse(normalized if "://" in normalized else f"https://{normalized}")
     host = parsed.netloc.lower() or parsed.path.lower()
     for url_part, provider in _URL_TO_PROVIDER.items():

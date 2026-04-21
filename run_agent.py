@@ -4476,6 +4476,21 @@ class AIAgent:
                 self._client_log_context(),
             )
             return client
+        if self.provider == "claude-code-cli" or str(client_kwargs.get("base_url", "")).startswith("claude-cli://"):
+            from agent.claude_cli_adapter import ClaudeCodeCLIClient
+
+            safe_kwargs = {
+                k: v for k, v in client_kwargs.items()
+                if k in {"api_key", "base_url", "default_headers", "timeout"}
+            }
+            client = ClaudeCodeCLIClient(**safe_kwargs)
+            logger.info(
+                "Claude Code CLI client created (%s, shared=%s) %s",
+                reason,
+                shared,
+                self._client_log_context(),
+            )
+            return client
         if self.provider == "gemini":
             from agent.gemini_native_adapter import GeminiNativeClient, is_native_gemini_base_url
 

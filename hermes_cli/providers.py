@@ -71,6 +71,11 @@ HERMES_OVERLAYS: Dict[str, HermesOverlay] = {
         auth_type="oauth_external",
         base_url_override="cloudcode-pa://google",
     ),
+    "claude-code-cli": HermesOverlay(
+        transport="openai_chat",
+        auth_type="external_process",
+        base_url_override="claude-cli://local",
+    ),
     "copilot-acp": HermesOverlay(
         transport="codex_responses",
         auth_type="external_process",
@@ -254,6 +259,10 @@ ALIASES: Dict[str, str] = {
     "gemini-cli": "google-gemini-cli",
     "gemini-oauth": "google-gemini-cli",
 
+    # claude-code-cli (Claude Max / Claude Code subscription path)
+    "claude-max-cli": "claude-code-cli",
+    "claude-cli-subscription": "claude-code-cli",
+
 
     # huggingface
     "hf": "huggingface",
@@ -294,6 +303,7 @@ _LABEL_OVERRIDES: Dict[str, str] = {
     "nous": "Nous Portal",
     "openai-codex": "OpenAI Codex",
     "copilot-acp": "GitHub Copilot ACP",
+    "claude-code-cli": "Claude Code CLI",
     "xiaomi": "Xiaomi MiMo",
     "local": "Local endpoint",
     "bedrock": "AWS Bedrock",
